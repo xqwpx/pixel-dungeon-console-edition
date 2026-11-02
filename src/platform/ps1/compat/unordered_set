@@ -1,0 +1,25 @@
+#pragma once
+
+#include <vector>
+
+namespace std {
+
+// The connected gameplay graph only uses unordered_set for a short list of
+// already-hit actors.  Linear lookup keeps the implementation freestanding
+// and is preferable to a heap-heavy hash table on PS1.
+template <typename T>
+class unordered_set {
+public:
+    bool empty() const noexcept { return values_.empty(); }
+    size_t size() const noexcept { return values_.size(); }
+    size_t count(const T& value) const {
+        for (const T& existing : values_) if (existing == value) return 1;
+        return 0;
+    }
+    void insert(const T& value) { if (!count(value)) values_.push_back(value); }
+
+private:
+    vector<T> values_;
+};
+
+} // namespace std

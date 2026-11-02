@@ -1,0 +1,13 @@
+// RSX Cg's COLOR varying is not reliably linked by the current PS3DK
+// compiler/runtime pair.  The base texture pass deliberately uses only the
+// two varyings proven by the native cellGcm sample; tinting is restored once
+// the matching TEXCOORD-based path is in place.
+void main(
+    float2 in_position      : POSITION,
+    float2 in_texcoord      : TEXCOORD0,
+    out float4 out_position : POSITION,
+    out float2 out_texcoord : TEXCOORD0)
+{
+    out_position = float4(in_position.x, in_position.y, 0.0f, 1.0f);
+    out_texcoord = in_texcoord;
+}

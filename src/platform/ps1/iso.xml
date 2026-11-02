@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iso_project>
+    <track type="data">
+        <identifiers
+            system="PLAYSTATION"
+            volume="PIXEL_DUNGEON_PS1"
+            volume_set="PIXEL_DUNGEON_PS1"
+            publisher="PIXEL DUNGEON"
+            data_preparer="PIXEL DUNGEON CONSOLE EDITION"
+            application="PLAYSTATION"
+            copyright="README.TXT;1"
+        />
+        <directory_tree>
+            <file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/src/platform/ps1/system.cnf" />
+            <file name="PIXELDUN.EXE" type="data" source="PixelDungeonConsoleEditionPS1.exe" />
+            <dummy sectors="1024" />
+        </directory_tree>
+    </track>
+</iso_project>

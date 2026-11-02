@@ -1,0 +1,147 @@
+#pragma once
+
+#include <cstddef>
+#include <utility>
+
+namespace std {
+
+template <typename T>
+struct default_delete {
+    constexpr default_delete() noexcept = default;
+    void operator()(T* value) const noexcept { delete value; }
+};
+
+// Freestanding ownership primitive used by the shared gameplay objects.  It
+// intentionally lives only in the PS1 overlay; desktop and other consoles
+// retain their toolchain's standard library implementation.
+template <typename T, typename Deleter = default_delete<T>>
+class unique_ptr {
+public:
+    template <typename, typename> friend class unique_ptr;
+    constexpr unique_ptr() noexcept = default;
+    constexpr unique_ptr(decltype(nullptr)) noexcept {}
+    explicit unique_ptr(T* value) noexcept : value_(value) {}
+    unique_ptr(const unique_ptr&) = delete;
+    unique_ptr& operator=(const unique_ptr&) = delete;
+
+    unique_ptr(unique_ptr&& other) noexcept
+        : value_(other.release()), deleter_(std::move(other.deleter_)) {}
+    template <typename U, typename OtherDeleter>
+    unique_ptr(unique_ptr<U, OtherDeleter>&& other) noexcept
+        : value_(other.release()) {}
+    ~unique_ptr() { reset(); }
+
+    unique_ptr& operator=(unique_ptr&& other) noexcept {
+        if (this != &other) {
+            reset(other.release());
+            deleter_ = std::move(other.deleter_);
+        }
+        return *this;
+    }
+    template <typename U, typename OtherDeleter>
+    unique_ptr& operator=(unique_ptr<U, OtherDeleter>&& other) noexcept {
+        reset(other.release());
+        return *this;
+    }
+    unique_ptr& operator=(decltype(nullptr)) noexcept { reset(); return *this; }
+
+    T* get() const noexcept { return value_; }
+    T& operator*() const noexcept { return *value_; }
+    T* operator->() const noexcept { return value_; }
+    explicit operator bool() const noexcept { return value_ != nullptr; }
+
+    T* release() noexcept { T* result = value_; value_ = nullptr; return result; }
+    void reset(T* value = nullptr) noexcept {
+        T* previous = value_;
+        value_ = value;
+        if (previous) deleter_(previous);
+    }
+    void swap(unique_ptr& other) noexcept {
+        T* value = value_; value_ = other.value_; other.value_ = value;
+        Deleter deleter = std::move(deleter_);
+        deleter_ = std::move(other.deleter_);
+        other.deleter_ = std::move(deleter);
+    }
+
+private:
+    T* value_ = nullptr;
+    Deleter deleter_{};
+};
+
+template <typename T, typename Deleter>
+inline bool operator==(const unique_ptr<T, Deleter>& value, decltype(nullptr)) noexcept { return !value; }
+template <typename T, typename Deleter>
+inline bool operator==(decltype(nullptr), const unique_ptr<T, Deleter>& value) noexcept { return !value; }
+template <typename T, typename Deleter>
+inline bool operator!=(const unique_ptr<T, Deleter>& value, decltype(nullptr)) noexcept { return static_cast<bool>(value); }
+template <typename T, typename Deleter>
+inline bool operator!=(decltype(nullptr), const unique_ptr<T, Deleter>& value) noexcept { return static_cast<bool>(value); }
+
+template <typename T, typename... Args>
+unique_ptr<T> make_unique(Args&&... args) {
+    return unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+namespace ps1_detail {
+struct shared_control {
+    size_t references = 1;
+    void* value = nullptr;
+    void (*destroy)(void*) = nullptr;
+};
+template <typename T>
+void destroy_shared(void* value) { delete static_cast<T*>(value); }
+} // namespace ps1_detail
+
+template <typename T>
+class shared_ptr {
+public:
+    constexpr shared_ptr() noexcept = default;
+    constexpr shared_ptr(decltype(nullptr)) noexcept {}
+    explicit shared_ptr(T* value) { adopt(value); }
+    shared_ptr(const shared_ptr& other) noexcept : value_(other.value_), control_(other.control_) { retain(); }
+    shared_ptr(shared_ptr&& other) noexcept : value_(other.value_), control_(other.control_) { other.value_ = nullptr; other.control_ = nullptr; }
+    ~shared_ptr() { release(); }
+
+    shared_ptr& operator=(const shared_ptr& other) noexcept {
+        if (this != &other) { release(); value_ = other.value_; control_ = other.control_; retain(); }
+        return *this;
+    }
+    shared_ptr& operator=(shared_ptr&& other) noexcept {
+        if (this != &other) { release(); value_ = other.value_; control_ = other.control_; other.value_ = nullptr; other.control_ = nullptr; }
+        return *this;
+    }
+    shared_ptr& operator=(decltype(nullptr)) noexcept { reset(); return *this; }
+
+    T* get() const noexcept { return value_; }
+    T& operator*() const noexcept { return *value_; }
+    T* operator->() const noexcept { return value_; }
+    explicit operator bool() const noexcept { return value_ != nullptr; }
+    size_t use_count() const noexcept { return control_ ? control_->references : 0; }
+    void reset() noexcept { release(); }
+    void reset(T* value) { release(); adopt(value); }
+
+private:
+    void adopt(T* value) {
+        if (!value) return;
+        control_ = new ps1_detail::shared_control;
+        control_->value = value;
+        control_->destroy = &ps1_detail::destroy_shared<T>;
+        value_ = value;
+    }
+    void retain() noexcept { if (control_) ++control_->references; }
+    void release() noexcept {
+        if (!control_) return;
+        if (!--control_->references) { control_->destroy(control_->value); delete control_; }
+        value_ = nullptr; control_ = nullptr;
+    }
+
+    T* value_ = nullptr;
+    ps1_detail::shared_control* control_ = nullptr;
+};
+
+template <typename T, typename... Args>
+shared_ptr<T> make_shared(Args&&... args) {
+    return shared_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+} // namespace std

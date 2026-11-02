@@ -1,0 +1,76 @@
+#pragma once
+#include <cstddef>
+#include <utility>
+
+namespace std {
+template <typename T> constexpr const T& min(const T& a, const T& b) { return b < a ? b : a; }
+template <typename T> constexpr const T& max(const T& a, const T& b) { return a < b ? b : a; }
+template <typename T> constexpr T abs(T value) { return value < 0 ? -value : value; }
+template <typename Iterator, typename T> void fill(Iterator first, Iterator last, const T& value) {
+    for (; first != last; ++first) *first = value;
+}
+template <typename Iterator, typename Predicate> Iterator remove_if(Iterator first, Iterator last, Predicate predicate) {
+    Iterator output = first;
+    for (; first != last; ++first) {
+        if (!predicate(*first)) {
+            if (output != first) *output = std::move(*first);
+            ++output;
+        }
+    }
+    return output;
+}
+template <typename Iterator, typename T> Iterator find(Iterator first, Iterator last, const T& value) {
+    for (; first != last; ++first) if (*first == value) break;
+    return first;
+}
+template <typename Iterator, typename T> Iterator remove(Iterator first, Iterator last, const T& value) {
+    Iterator output = first;
+    for (; first != last; ++first) {
+        if (!(*first == value)) {
+            if (output != first) *output = std::move(*first);
+            ++output;
+        }
+    }
+    return output;
+}
+template <typename T> void swap(T& left, T& right) {
+    T temporary = std::move(left);
+    left = std::move(right);
+    right = std::move(temporary);
+}
+template <typename Iterator> void rotate(Iterator first, Iterator middle, Iterator last) {
+    if (first == middle || middle == last) return;
+    Iterator left = first, right = middle;
+    while (left != right && left != --right) { swap(*left, *right); ++left; }
+    left = middle; right = last;
+    while (left != right && left != --right) { swap(*left, *right); ++left; }
+    left = first; right = last;
+    while (left != right && left != --right) { swap(*left, *right); ++left; }
+}
+template <typename Iterator> void sort(Iterator first, Iterator last) {
+    for (Iterator current = first + 1; current != last; ++current) {
+        auto value = std::move(*current);
+        Iterator position = current;
+        while (position != first && value < *(position - 1)) {
+            *position = std::move(*(position - 1));
+            --position;
+        }
+        *position = std::move(value);
+    }
+}
+template <typename Iterator, typename Compare> void sort(Iterator first, Iterator last, Compare compare) {
+    for (Iterator current = first + 1; current != last; ++current) {
+        auto value = std::move(*current);
+        Iterator position = current;
+        while (position != first && compare(value, *(position - 1))) {
+            *position = std::move(*(position - 1));
+            --position;
+        }
+        *position = std::move(value);
+    }
+}
+template <typename Iterator, typename Output> Output copy(Iterator first, Iterator last, Output output) { for (; first != last; ++first, ++output) *output = *first; return output; }
+template <typename Iterator, typename Predicate> Iterator find_if(Iterator first, Iterator last, Predicate predicate) { for (; first != last; ++first) if (predicate(*first)) break; return first; }
+template <typename T, size_t N> constexpr T* begin(T (&values)[N]) { return values; }
+template <typename T, size_t N> constexpr T* end(T (&values)[N]) { return values + N; }
+} // namespace std

@@ -1,0 +1,31 @@
+# Build products and locally supplied assets
+/build/
+/build-host/
+/dist/
+**/*.png
+**/*.PNG
+**/*.jpg
+**/*.JPG
+**/*.jpeg
+**/*.JPEG
+**/*.bmp
+**/*.BMP
+**/*.gif
+**/*.GIF
+**/*.webp
+**/*.WEBP
+**/*.tga
+**/*.TGA
+**/*.tim
+**/*.TIM
+
+# Local IDE, cache and save data
+/.vs/
+/.vscode/
+/.idea/
+/.cache/
+/**/__pycache__/
+*.py[cod]
+*.user
+*.suo
+/userdata/

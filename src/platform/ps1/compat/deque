@@ -1,0 +1,41 @@
+#pragma once
+
+#include <vector>
+
+namespace std {
+
+// Heap uses deque as a short item queue. A contiguous backing store is more
+// suitable for the PS1's small fixed-memory budget and exposes the subset of
+// deque operations needed by shared gameplay unchanged.
+template <typename T>
+class deque {
+public:
+    using value_type = T;
+    using iterator = typename vector<T>::iterator;
+    using const_iterator = typename vector<T>::const_iterator;
+
+    bool empty() const noexcept { return values_.empty(); }
+    size_t size() const noexcept { return values_.size(); }
+    T& front() { return values_.front(); }
+    const T& front() const { return values_.front(); }
+    T& back() { return values_.back(); }
+    const T& back() const { return values_.back(); }
+    iterator begin() noexcept { return values_.begin(); }
+    const_iterator begin() const noexcept { return values_.begin(); }
+    iterator end() noexcept { return values_.end(); }
+    const_iterator end() const noexcept { return values_.end(); }
+    void clear() { values_.clear(); }
+    void push_back(const T& value) { values_.push_back(value); }
+    void push_back(T&& value) { values_.push_back(static_cast<T&&>(value)); }
+    void push_front(const T& value) { values_.insert(values_.begin(), value); }
+    void push_front(T&& value) { values_.insert(values_.begin(), static_cast<T&&>(value)); }
+    void pop_back() { values_.pop_back(); }
+    void pop_front() { if (!values_.empty()) values_.erase(values_.begin()); }
+    iterator erase(iterator position) { return values_.erase(position); }
+    iterator erase(iterator first, iterator last) { return values_.erase(first, last); }
+
+private:
+    vector<T> values_;
+};
+
+} // namespace std

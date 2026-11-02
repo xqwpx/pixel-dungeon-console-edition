@@ -1,0 +1,27 @@
+#pragma once
+
+namespace std {
+
+inline int abs(int value) { return value < 0 ? -value : value; }
+inline long abs(long value) { return value < 0 ? -value : value; }
+inline float abs(float value) { return value < 0.0f ? -value : value; }
+inline double abs(double value) { return value < 0.0 ? -value : value; }
+
+inline float floor(float value) { return __builtin_floorf(value); }
+inline double floor(double value) { return __builtin_floor(value); }
+inline float ceil(float value) { return __builtin_ceilf(value); }
+inline double ceil(double value) { return __builtin_ceil(value); }
+inline float sqrt(float value) { return __builtin_sqrtf(value); }
+inline double sqrt(double value) { return __builtin_sqrt(value); }
+inline float pow(float left, float right) { return __builtin_powf(left, right); }
+inline double pow(double left, double right) { return __builtin_pow(left, right); }
+inline float log10(float value) { return __builtin_log10f(value); }
+inline double log10(double value) { return __builtin_log10(value); }
+inline float cos(float value) { return __builtin_cosf(value); }
+inline double cos(double value) { return __builtin_cos(value); }
+inline float asin(float value) { return __builtin_asinf(value); }
+inline double asin(double value) { return __builtin_asin(value); }
+inline bool isfinite(float value) { return __builtin_isfinite(value); }
+inline bool isfinite(double value) { return __builtin_isfinite(value); }
+
+} // namespace std

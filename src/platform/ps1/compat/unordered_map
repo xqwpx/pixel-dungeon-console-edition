@@ -1,0 +1,63 @@
+#pragma once
+
+#include <cstddef>
+#include <utility>
+#include <vector>
+
+namespace std {
+
+// The PS1 map is deliberately a small linear container. Dungeon maps carry a
+// modest number of heaps/plants, and this keeps the PS1 memory profile
+// predictable while preserving the standard unordered_map-facing API used by
+// shared gameplay code.
+template <typename Key, typename Value>
+class unordered_map {
+public:
+    using value_type = pair<Key, Value>;
+    using iterator = typename vector<value_type>::iterator;
+    using const_iterator = typename vector<value_type>::const_iterator;
+
+    iterator begin() noexcept { return values_.begin(); }
+    const_iterator begin() const noexcept { return values_.begin(); }
+    iterator end() noexcept { return values_.end(); }
+    const_iterator end() const noexcept { return values_.end(); }
+    bool empty() const noexcept { return values_.empty(); }
+    size_t size() const noexcept { return values_.size(); }
+    void clear() { values_.clear(); }
+
+    iterator find(const Key& key) {
+        for (iterator entry = begin(); entry != end(); ++entry)
+            if (entry->first == key) return entry;
+        return end();
+    }
+    const_iterator find(const Key& key) const {
+        for (const_iterator entry = begin(); entry != end(); ++entry)
+            if (entry->first == key) return entry;
+        return end();
+    }
+    size_t count(const Key& key) const { return find(key) == end() ? 0 : 1; }
+    Value& operator[](const Key& key) {
+        iterator entry = find(key);
+        if (entry != end()) return entry->second;
+        values_.emplace_back(key, Value{});
+        return values_.back().second;
+    }
+    pair<iterator, bool> emplace(const Key& key, Value&& value) {
+        iterator entry = find(key);
+        if (entry != end()) return pair<iterator, bool>(entry, false);
+        values_.emplace_back(key, static_cast<Value&&>(value));
+        return pair<iterator, bool>(values_.end() - 1, true);
+    }
+    iterator erase(iterator entry) { return values_.erase(entry); }
+    size_t erase(const Key& key) {
+        iterator entry = find(key);
+        if (entry == end()) return 0;
+        values_.erase(entry);
+        return 1;
+    }
+
+private:
+    vector<value_type> values_;
+};
+
+} // namespace std

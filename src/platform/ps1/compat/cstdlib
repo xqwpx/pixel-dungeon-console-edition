@@ -1,0 +1,15 @@
+#pragma once
+
+// Avoid PSn00bSDK's C++ <cstdlib> wrapper: it redeclares RAND_MAX after the
+// C header has defined it as a macro.  The gameplay graph only needs the C
+// declarations, which are provided by this freestanding header.
+#include <stdlib.h>
+
+namespace std {
+using ::abs;
+using ::malloc;
+using ::free;
+using ::realloc;
+using ::qsort;
+using ::bsearch;
+} // namespace std

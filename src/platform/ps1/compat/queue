@@ -1,0 +1,50 @@
+#pragma once
+
+#include <deque>
+
+namespace std {
+
+// RegularLevel uses FIFO flood-fill queues while validating generated maps.
+// Keep the freestanding PS1 replacement deliberately small and build it on
+// the project's compact deque implementation.
+template <typename T>
+class queue {
+public:
+    bool empty() const noexcept { return values_.empty(); }
+    size_t size() const noexcept { return values_.size(); }
+
+    T& front() { return values_.front(); }
+    const T& front() const { return values_.front(); }
+    T& back() { return values_.back(); }
+    const T& back() const { return values_.back(); }
+
+    void push(const T& value) { values_.push_back(value); }
+    void push(T&& value) { values_.push_back(static_cast<T&&>(value)); }
+    void pop() { values_.pop_front(); }
+
+private:
+    deque<T> values_;
+};
+
+template <typename T, typename Container, typename Compare>
+class priority_queue {
+public:
+    bool empty() const noexcept { return values_.empty(); }
+    size_t size() const noexcept { return values_.size(); }
+    const T& top() const { return values_[bestIndex()]; }
+    void push(const T& value) { values_.push_back(value); }
+    void push(T&& value) { values_.push_back(static_cast<T&&>(value)); }
+    void pop() { values_.erase(values_.begin() + bestIndex()); }
+
+private:
+    size_t bestIndex() const {
+        size_t best = 0;
+        for (size_t index = 1; index < values_.size(); ++index)
+            if (compare_(values_[best], values_[index])) best = index;
+        return best;
+    }
+    Container values_;
+    Compare compare_{};
+};
+
+} // namespace std

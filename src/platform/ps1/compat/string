@@ -1,0 +1,140 @@
+#pragma once
+
+#include <cstddef>
+#include <stdlib.h>
+#include <string.h>
+#include <utility>
+
+namespace std {
+
+class string {
+public:
+    static constexpr size_t npos = static_cast<size_t>(-1);
+
+    string() { allocate(0); }
+    string(const char* value) { assign(value); }
+    string(const char* value, size_t count) { assign(value, count); }
+    string(size_t count, char value) { allocate(count); for (size_t i = 0; i < count; ++i) data_[i] = value; }
+    string(const string& other) { assign(other.data_, other.size_); }
+    string(string&& other) noexcept : data_(other.data_), size_(other.size_), capacity_(other.capacity_) {
+        other.data_ = nullptr; other.size_ = other.capacity_ = 0;
+    }
+    ~string() { free(data_); }
+
+    string& operator=(const string& other) { if (this != &other) assign(other.data_, other.size_); return *this; }
+    string& operator=(string&& other) noexcept {
+        if (this != &other) { free(data_); data_ = other.data_; size_ = other.size_; capacity_ = other.capacity_; other.data_ = nullptr; other.size_ = other.capacity_ = 0; }
+        return *this;
+    }
+    string& operator=(const char* value) { assign(value); return *this; }
+
+    const char* c_str() const noexcept { return data_ ? data_ : ""; }
+    const char* data() const noexcept { return c_str(); }
+    char* data() noexcept { return data_; }
+    size_t size() const noexcept { return size_; }
+    size_t length() const noexcept { return size_; }
+    bool empty() const noexcept { return size_ == 0; }
+    char& operator[](size_t index) { return data_[index]; }
+    const char& operator[](size_t index) const { return data_[index]; }
+    char& front() { return data_[0]; }
+    char& back() { return data_[size_ - 1]; }
+    const char& front() const { return data_[0]; }
+    const char& back() const { return data_[size_ - 1]; }
+    char* begin() noexcept { return data_; }
+    const char* begin() const noexcept { return data_; }
+    char* end() noexcept { return data_ + size_; }
+    const char* end() const noexcept { return data_ + size_; }
+
+    void clear() noexcept { size_ = 0; data_[0] = '\0'; }
+    void reserve(size_t count) { if (count > capacity_) grow(count); }
+    void resize(size_t count, char value = '\0') {
+        reserve(count);
+        for (size_t i = size_; i < count; ++i) data_[i] = value;
+        size_ = count; data_[size_] = '\0';
+    }
+    void push_back(char value) { reserve(size_ + 1); data_[size_++] = value; data_[size_] = '\0'; }
+    string& append(const string& other) { return append(other.data_, other.size_); }
+    string& append(const char* value) { return append(value, value ? strlen(value) : 0); }
+    string& append(const char* value, size_t count) {
+        if (!value || !count) return *this;
+        const size_t oldSize = size_;
+        reserve(size_ + count);
+        memmove(data_ + oldSize, value, count);
+        size_ += count; data_[size_] = '\0';
+        return *this;
+    }
+    string& operator+=(const string& other) { return append(other); }
+    string& operator+=(const char* value) { return append(value); }
+    string& operator+=(char value) { push_back(value); return *this; }
+    string& assign(const char* value) { return assign(value, value ? strlen(value) : 0); }
+    string& assign(const char* value, size_t count) {
+        reserve(count);
+        if (count) memmove(data_, value, count);
+        size_ = count; data_[size_] = '\0';
+        return *this;
+    }
+    string& erase(size_t position = 0, size_t count = npos) {
+        if (position >= size_) return *this;
+        if (count == npos || position + count > size_) count = size_ - position;
+        memmove(data_ + position, data_ + position + count, size_ - position - count + 1);
+        size_ -= count;
+        return *this;
+    }
+    string substr(size_t position = 0, size_t count = npos) const {
+        if (position >= size_) return string();
+        if (count == npos || position + count > size_) count = size_ - position;
+        return string(data_ + position, count);
+    }
+    size_t find(const string& value, size_t position = 0) const { return find(value.c_str(), position); }
+    size_t find(const char* value, size_t position = 0) const {
+        if (!value || position > size_) return npos;
+        const size_t count = strlen(value);
+        if (!count) return position;
+        for (size_t i = position; i + count <= size_; ++i)
+            if (memcmp(data_ + i, value, count) == 0) return i;
+        return npos;
+    }
+    size_t find(char value, size_t position = 0) const {
+        for (size_t i = position; i < size_; ++i) if (data_[i] == value) return i;
+        return npos;
+    }
+    size_t rfind(char value, size_t position = npos) const {
+        if (!size_) return npos;
+        size_t i = position < size_ ? position : size_ - 1;
+        for (;;) { if (data_[i] == value) return i; if (!i) break; --i; }
+        return npos;
+    }
+
+private:
+    void allocate(size_t count) {
+        capacity_ = count;
+        data_ = static_cast<char*>(malloc(capacity_ + 1));
+        if (!data_) __builtin_trap();
+        size_ = 0; data_[0] = '\0';
+    }
+    void grow(size_t count) {
+        size_t next = capacity_ ? capacity_ : 8;
+        while (next < count) next *= 2;
+        char* replacement = static_cast<char*>(realloc(data_, next + 1));
+        if (!replacement) __builtin_trap();
+        data_ = replacement; capacity_ = next;
+    }
+
+    char* data_ = nullptr;
+    size_t size_ = 0;
+    size_t capacity_ = 0;
+};
+
+inline bool operator==(const string& left, const string& right) { return left.size() == right.size() && memcmp(left.data(), right.data(), left.size()) == 0; }
+inline bool operator!=(const string& left, const string& right) { return !(left == right); }
+inline bool operator==(const string& left, const char* right) { return left == string(right); }
+inline bool operator==(const char* left, const string& right) { return string(left) == right; }
+inline bool operator!=(const string& left, const char* right) { return !(left == right); }
+inline bool operator!=(const char* left, const string& right) { return !(left == right); }
+inline bool operator<(const string& left, const string& right) { return strcmp(left.c_str(), right.c_str()) < 0; }
+inline string operator+(const string& left, const string& right) { string result(left); result += right; return result; }
+inline string operator+(const string& left, const char* right) { string result(left); result += right; return result; }
+inline string operator+(const char* left, const string& right) { string result(left); result += right; return result; }
+inline string operator+(const string& left, char right) { string result(left); result += right; return result; }
+
+} // namespace std

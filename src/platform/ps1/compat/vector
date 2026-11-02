@@ -1,0 +1,167 @@
+#pragma once
+
+#include <cstddef>
+#include <initializer_list>
+#include <new>
+#include <stdlib.h>
+
+namespace std {
+
+// Small freestanding vector implementation for PSn00bSDK. It is deliberately
+// kept in the PS1 include overlay; shared gameplay continues to include the
+// standard <vector> interface unchanged.
+template <typename T>
+class vector {
+public:
+    using value_type = T;
+    using iterator = T*;
+    using const_iterator = const T*;
+    vector() = default;
+    explicit vector(size_t count) { resize(count); }
+    vector(size_t count, const T& value) { assign(count, value); }
+    template <typename Iterator> vector(Iterator first, Iterator last) { assign(first, last); }
+    vector(initializer_list<T> values) { assign(values.begin(), values.end()); }
+    vector(const vector& other) { assign(other.begin(), other.end()); }
+    vector(vector&& other) noexcept : data_(other.data_), size_(other.size_), capacity_(other.capacity_) {
+        other.data_ = nullptr; other.size_ = other.capacity_ = 0;
+    }
+    ~vector() { release(); }
+
+    vector& operator=(const vector& other) {
+        if (this != &other) assign(other.begin(), other.end());
+        return *this;
+    }
+    vector& operator=(vector&& other) noexcept {
+        if (this != &other) {
+            release(); data_ = other.data_; size_ = other.size_; capacity_ = other.capacity_;
+            other.data_ = nullptr; other.size_ = other.capacity_ = 0;
+        }
+        return *this;
+    }
+    vector& operator=(initializer_list<T> values) {
+        assign(values.begin(), values.end());
+        return *this;
+    }
+
+    T* begin() { return data_; }
+    const T* begin() const { return data_; }
+    T* end() { return data_ + size_; }
+    const T* end() const { return data_ + size_; }
+    T& operator[](size_t index) { return data_[index]; }
+    const T& operator[](size_t index) const { return data_[index]; }
+    T& front() { return data_[0]; }
+    const T& front() const { return data_[0]; }
+    T& back() { return data_[size_ - 1]; }
+    const T& back() const { return data_[size_ - 1]; }
+    T* data() { return data_; }
+    const T* data() const { return data_; }
+    size_t size() const { return size_; }
+    bool empty() const { return size_ == 0; }
+
+    void clear() { destroyRange(0, size_); size_ = 0; }
+    void reserve(size_t capacity) { if (capacity > capacity_) grow(capacity); }
+    void resize(size_t count) {
+        if (count < size_) { destroyRange(count, size_); size_ = count; return; }
+        reserve(count);
+        while (size_ < count) ::new (data_ + size_++) T();
+    }
+    void assign(size_t count, const T& value) {
+        clear(); reserve(count);
+        for (size_t index = 0; index < count; ++index) ::new (data_ + size_++) T(value);
+    }
+    void assign(int count, const T& value) { assign(static_cast<size_t>(count < 0 ? 0 : count), value); }
+    template <typename Iterator>
+    void assign(Iterator first, Iterator last) {
+        clear();
+        for (; first != last; ++first) push_back(*first);
+    }
+    void push_back(const T& value) {
+        reserveForOne(); ::new (data_ + size_++) T(value);
+    }
+    void push_back(T&& value) {
+        reserveForOne(); ::new (data_ + size_++) T(static_cast<T&&>(value));
+    }
+    void pop_back() {
+        if (size_) data_[--size_].~T();
+    }
+    template <typename... Args>
+    T& emplace_back(Args&&... args) {
+        reserveForOne(); ::new (data_ + size_) T(static_cast<Args&&>(args)...); return data_[size_++];
+    }
+    iterator erase(iterator position) {
+        const size_t index = static_cast<size_t>(position - data_);
+        if (index >= size_) return end();
+        data_[index].~T();
+        for (size_t cursor = index; cursor + 1 < size_; ++cursor) {
+            ::new (data_ + cursor) T(static_cast<T&&>(data_[cursor + 1]));
+            data_[cursor + 1].~T();
+        }
+        --size_;
+        return data_ + index;
+    }
+    iterator erase(iterator first, iterator last) {
+        const size_t index = static_cast<size_t>(first - data_);
+        const size_t count = static_cast<size_t>(last - first);
+        if (!count) return data_ + index;
+        destroyRange(index, index + count);
+        for (size_t cursor = index; cursor + count < size_; ++cursor) {
+            ::new (data_ + cursor) T(static_cast<T&&>(data_[cursor + count]));
+            data_[cursor + count].~T();
+        }
+        size_ -= count;
+        return data_ + index;
+    }
+    iterator insert(iterator position, const T& value) {
+        const size_t index = static_cast<size_t>(position - data_);
+        reserveForOne();
+        for (size_t cursor = size_; cursor > index; --cursor) {
+            ::new (data_ + cursor) T(static_cast<T&&>(data_[cursor - 1]));
+            data_[cursor - 1].~T();
+        }
+        ::new (data_ + index) T(value);
+        ++size_;
+        return data_ + index;
+    }
+    iterator insert(iterator position, T&& value) {
+        const size_t index = static_cast<size_t>(position - data_);
+        reserveForOne();
+        for (size_t cursor = size_; cursor > index; --cursor) {
+            ::new (data_ + cursor) T(static_cast<T&&>(data_[cursor - 1]));
+            data_[cursor - 1].~T();
+        }
+        ::new (data_ + index) T(static_cast<T&&>(value));
+        ++size_;
+        return data_ + index;
+    }
+    template <typename Iterator> iterator insert(iterator position, Iterator first, Iterator last) {
+        const size_t index = static_cast<size_t>(position - data_);
+        size_t added = 0;
+        for (; first != last; ++first) {
+            insert(data_ + index + added, *first);
+            ++added;
+        }
+        return data_ + index;
+    }
+
+private:
+    void reserveForOne() { if (size_ == capacity_) grow(capacity_ ? capacity_ * 2 : 8); }
+    void grow(size_t newCapacity) {
+        T* replacement = static_cast<T*>(malloc(sizeof(T) * newCapacity));
+        if (!replacement) return;
+        for (size_t index = 0; index < size_; ++index) {
+            ::new (replacement + index) T(static_cast<T&&>(data_[index]));
+            data_[index].~T();
+        }
+        free(data_); data_ = replacement; capacity_ = newCapacity;
+    }
+    void destroyRange(size_t first, size_t last) {
+        while (last > first) data_[--last].~T();
+    }
+    void release() { clear(); free(data_); data_ = nullptr; capacity_ = 0; }
+
+    T* data_ = nullptr;
+    size_t size_ = 0;
+    size_t capacity_ = 0;
+};
+
+} // namespace std

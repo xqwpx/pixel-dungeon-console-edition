@@ -1,0 +1,31 @@
+#pragma once
+
+#include <stdio.h>
+#include <string>
+
+namespace std {
+
+// The gameplay descriptions only need append-style integer formatting.  A
+// small stream avoids pulling the desktop iostream runtime into the PS1 build.
+class ostringstream {
+public:
+    ostringstream& operator<<(const string& value) { value_.append(value); return *this; }
+    ostringstream& operator<<(const char* value) { value_.append(value); return *this; }
+    ostringstream& operator<<(char value) { value_.push_back(value); return *this; }
+    ostringstream& operator<<(int value) { appendNumber(value); return *this; }
+    ostringstream& operator<<(unsigned int value) { appendUnsigned(value); return *this; }
+    ostringstream& operator<<(long value) { appendLong(value); return *this; }
+    ostringstream& operator<<(unsigned long value) { appendUnsignedLong(value); return *this; }
+
+    string str() const { return value_; }
+
+private:
+    void appendNumber(int value) { char text[16]; snprintf(text, sizeof(text), "%d", value); value_.append(text); }
+    void appendUnsigned(unsigned int value) { char text[16]; snprintf(text, sizeof(text), "%u", value); value_.append(text); }
+    void appendLong(long value) { char text[24]; snprintf(text, sizeof(text), "%ld", value); value_.append(text); }
+    void appendUnsignedLong(unsigned long value) { char text[24]; snprintf(text, sizeof(text), "%lu", value); value_.append(text); }
+
+    string value_;
+};
+
+} // namespace std

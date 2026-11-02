@@ -1,0 +1,41 @@
+#pragma once
+
+namespace std {
+
+template <typename First, typename Second>
+struct pair {
+    First first;
+    Second second;
+
+    pair() = default;
+    pair(const First& firstValue, const Second& secondValue)
+        : first(firstValue), second(secondValue) {}
+    pair(const First& firstValue, Second&& secondValue)
+        : first(firstValue), second(static_cast<Second&&>(secondValue)) {}
+    pair(First&& firstValue, Second&& secondValue)
+        : first(static_cast<First&&>(firstValue)), second(static_cast<Second&&>(secondValue)) {}
+};
+
+template <typename T>
+struct remove_reference { using type = T; };
+template <typename T>
+struct remove_reference<T&> { using type = T; };
+template <typename T>
+struct remove_reference<T&&> { using type = T; };
+
+template <typename T>
+constexpr typename remove_reference<T>::type&& move(T&& value) noexcept {
+    return static_cast<typename remove_reference<T>::type&&>(value);
+}
+
+template <typename T>
+constexpr T&& forward(T& value) noexcept {
+    return static_cast<T&&>(value);
+}
+
+template <typename T>
+constexpr T&& forward(T&& value) noexcept {
+    return static_cast<T&&>(value);
+}
+
+} // namespace std

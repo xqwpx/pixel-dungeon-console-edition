@@ -1,0 +1,33 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+
+namespace std {
+
+template <size_t N>
+class bitset {
+public:
+    bitset() { reset(); }
+
+    bitset& reset() {
+        for (size_t index = 0; index < WordCount; ++index) words_[index] = 0;
+        return *this;
+    }
+    bitset& set(size_t position, bool value = true) {
+        if (position >= N) return *this;
+        const uint32_t mask = 1u << (position & 31u);
+        if (value) words_[position >> 5u] |= mask;
+        else words_[position >> 5u] &= ~mask;
+        return *this;
+    }
+    bool test(size_t position) const {
+        return position < N && (words_[position >> 5u] & (1u << (position & 31u))) != 0;
+    }
+
+private:
+    static constexpr size_t WordCount = (N + 31u) / 32u;
+    uint32_t words_[WordCount]{};
+};
+
+} // namespace std

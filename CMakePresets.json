@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {"name":"windows-debug","generator":"Ninja","binaryDir":"${sourceDir}/build/windows/debug","cacheVariables":{"PD_PLATFORM":"windows","CMAKE_BUILD_TYPE":"Debug"}},
+    {"name":"windows-release","generator":"Ninja","binaryDir":"${sourceDir}/build/windows/release","cacheVariables":{"PD_PLATFORM":"windows","CMAKE_BUILD_TYPE":"Release"}}
+  ]
+}
